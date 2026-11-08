@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI ระบบสั่งอาหารออนไลน์ - AI Food Delivery App</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for Admin Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts Sarabun & Kanit -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            }
+          },
+          fontFamily: {
+            sans: ['Kanit', 'Sarabun', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Kanit', sans-serif; background-color: #f8fafc; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .pulse-dot { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body class="text-slate-800 bg-slate-50 min-h-screen flex flex-col pb-12 sm:pb-0">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        
+        <!-- Logo -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('customer')">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center text-white shadow-md shadow-orange-200">
+            <i class="fa-solid font-bold text-xl fa-utensils"></i>
+          </div>
+          <div>
+            <span class="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">AI Delivery</span>
+            <span class="hidden sm:inline-block text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium ml-1">v2.5 AI Powered</span>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs (Role Switcher - Cut Authentication) -->
+        <nav class="hidden md:flex space-x-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-sm">
+          <button onclick="switchTab('customer')" id="nav-customer" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all bg-white text-orange-600 shadow-sm">
+            <i class="fa-solid fa-store mr-1.5"></i> หน้าร้านค้า (ลูกค้า)
+          </button>
+          <button onclick="switchTab('tracking')" id="nav-tracking" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-slate-600 hover:text-orange-600 relative">
+            <i class="fa-solid fa-route mr-1.5"></i> ติดตามออเดอร์
+            <span id="tracking-badge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></span>
+          </button>
+          <button onclick="switchTab('kitchen')" id="nav-kitchen" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-slate-600 hover:text-orange-600">
+            <i class="fa-solid fa-fire-burner mr-1.5"></i> จอมอนิเตอร์ครัว (KDS)
+          </button>
+          <button onclick="switchTab('admin')" id="nav-admin" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-slate-600 hover:text-orange-600">
+            <i class="fa-solid fa-chart-line mr-1.5"></i> รายงานผู้บริหาร (Admin)
+          </button>
+        </nav>
+
+        <!-- Cart Quick Access (Customer) -->
+        <div class="flex items-center gap-3">
+          <button onclick="openAiChatModal()" class="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3.5 py-2 rounded-xl text-sm font-medium hover:opacity-95 transition shadow-sm">
+            <i class="fa-solid fa-robot text-amber-300 animate-bounce"></i>
+            <span class="hidden sm:inline">AI ช่วยเลือกเมนู</span>
+          </button>
+          <button onclick="openCartDrawer()" class="relative bg-orange-50 hover:bg-orange-100 text-orange-600 p-2.5 rounded-xl transition border border-orange-200">
+            <i class="fa-solid fa-basket-shopping text-lg"></i>
+            <span id="cart-count-badge" class="absolute -top-1.5 -right-1.5 bg-orange-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">0</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MOBILE BOTTOM NAVBAR -->
+  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 flex justify-around py-2 px-1 text-xs shadow-lg">
+    <button onclick="switchTab('customer')" class="flex flex-col items-center text-orange-600 font-medium">
+      <i class="fa-solid fa-store text-lg"></i> สั่งอาหาร
+    </button>
+    <button onclick="switchTab('tracking')" class="flex flex-col items-center text-slate-500">
+      <i class="fa-solid fa-route text-lg"></i> ติดตาม
+    </button>
+    <button onclick="switchTab('kitchen')" class="flex flex-col items-center text-slate-500">
+      <i class="fa-solid fa-fire-burner text-lg"></i> จอครัว
+    </button>
+    <button onclick="switchTab('admin')" class="flex flex-col items-center text-slate-500">
+      <i class="fa-solid fa-chart-line text-lg"></i> รายงาน
+    </button>
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ================= VIEW 1: CUSTOMER ORDERING VIEW ================= -->
+    <section id="view-customer" class="view-panel space-y-6">
+      
+      <!-- Banner / Smart Recommendation Card -->
+      <div class="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div class="relative z-10 max-w-xl">
+          <span class="bg-white/20 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-medium inline-block mb-3">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-300 mr-1"></i> Smart AI Recommendation
+          </span>
+          <h1 class="text-2xl sm:text-3xl font-bold mb-2">หิวเมื่อไหร่ ให้ AI ช่วยจัดมื้ออร่อย!</h1>
+          <p class="text-orange-100 text-sm mb-4">ระบบวิเคราะห์สภาพอากาศ เวลา และความนิยม แนะนำมื้อเที่ยงสุดคุ้มสำหรับคุณวันนี้</p>
+          <div class="flex gap-2">
+            <button onclick="filterCategory('ทั้งหมด')" class="bg-white text-orange-600 px-4 py-2 rounded-xl text-sm font-semibold shadow hover:bg-orange-50 transition">
+              ดูเมนูทั้งหมด
+            </button>
+            <button onclick="openAiChatModal()" class="bg-orange-700/40 border border-white/30 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-orange-700/60 transition">
+              <i class="fa-solid fa-comments mr-1"></i> แชทคุยกับ AI
+            </button>
+          </div>
+        </div>
+        <i class="fa-solid fa-burger absolute -right-4 -bottom-6 text-white/15 text-9xl pointer-events-none"></i>
+      </div>
+
+      <!-- Categories & Search Filter -->
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <!-- Category Chips -->
+        <div class="flex gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 custom-scroll" id="category-chips">
+          <!-- Rendered by JS -->
+        </div>
+        <!-- Search Input -->
+        <div class="relative w-full sm:w-64">
+          <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="ค้นหาชื่อเมนู..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+        </div>
+      </div>
+
+      <!-- Food Menu Grid -->
+      <div id="food-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ================= VIEW 2: ORDER TRACKING & SMART ETA ================= -->
+    <section id="view-tracking" class="view-panel hidden space-y-6">
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl mx-auto space-y-6">
+        
+        <div class="flex justify-between items-start border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-semibold uppercase text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md">Real-time Order Status</span>
+            <h2 class="text-2xl font-bold text-slate-800 mt-1">ออเดอร์ #<span id="track-order-id">ORD-10024</span></h2>
+            <p class="text-xs text-slate-500">สั่งเมื่อ: <span id="track-order-time">12:30 น.</span> | ชำระเงิน: สแกน QR Code</p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-slate-500">เวลาจัดส่งโดยประมาณ (Smart ETA)</span>
+            <div class="text-2xl font-bold text-slate-900 text-orange-600" id="track-eta">~18 นาที</div>
+          </div>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="relative py-4">
+          <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-slate-100">
+            <div id="status-progress-bar" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-orange-500 transition-all duration-500" style="width: 25%"></div>
+          </div>
+          <div class="grid grid-cols-4 text-center text-xs font-medium text-slate-500">
+            <div id="step-1" class="text-orange-600 font-bold"><i class="fa-solid fa-file-invoice block text-lg mb-1"></i>รับออเดอร์แล้ว</div>
+            <div id="step-2"><i class="fa-solid fa-fire-burner block text-lg mb-1"></i>กำลังปรุงอาหาร</div>
+            <div id="step-3"><i class="fa-solid fa-motorcycle block text-lg mb-1"></i>กำลังนำส่ง</div>
+            <div id="step-4"><i class="fa-solid fa-house-circle-check block text-lg mb-1"></i>จัดส่งสำเร็จ</div>
+          </div>
+        </div>
+
+        <!-- Live Simulated Delivery Map -->
+        <div class="bg-slate-100 border border-slate-200 rounded-xl h-56 relative overflow-hidden flex items-center justify-center">
+          <!-- Background Grid Simulation -->
+          <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]"></div>
+          
+          <!-- Mock Map Markers -->
+          <div class="absolute left-8 top-12 bg-white px-2.5 py-1 rounded-lg border border-slate-300 shadow text-xs font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-store text-orange-500"></i> ร้านครัว AI Express
+          </div>
+          
+          <div class="absolute right-8 bottom-12 bg-white px-2.5 py-1 rounded-lg border border-slate-300 shadow text-xs font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-location-dot text-red-500"></i> บ้านของคุณ (ที่อยู่จัดส่ง)
+          </div>
+
+          <!-- Rider Animated Marker -->
+          <div id="rider-marker" class="absolute left-1/3 top-1/2 -translate-y-1/2 bg-orange-600 text-white px-3 py-1.5 rounded-full shadow-lg font-semibold text-xs flex items-center gap-2 transition-all duration-1000">
+            <i class="fa-solid fa-motorcycle text-sm"></i> Rider กำลังเดินทาง
+          </div>
+        </div>
+
+        <!-- Order Detail Summary -->
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+          <h3 class="text-sm font-semibold mb-3 text-slate-700">รายการอาหารในออเดอร์นี้</h3>
+          <div id="track-item-list" class="space-y-2 text-sm text-slate-600">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="border-t border-slate-200 mt-3 pt-3 flex justify-between font-bold text-slate-800 text-sm">
+            <span>ราคารวมสุทธิ</span>
+            <span id="track-total-price" class="text-orange-600">0฿</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= VIEW 3: KITCHEN DISPLAY SYSTEM (KDS) ================= -->
+    <section id="view-kitchen" class="view-panel hidden space-y-6">
+      <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-fire-burner text-orange-500 mr-2"></i>ระบบจอมอนิเตอร์ห้องครัว (Kitchen Display Board)</h2>
+          <p class="text-xs text-slate-500">แสดงออเดอร์เข้าใหม่ อัปเดตสถานะการปรุงอาหาร Real-time</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            <span class="w-2 h-2 rounded-full bg-green-500 pulse-dot"></span> ระบบเชื่อมต่อเรียบร้อย
+          </span>
+        </div>
+      </div>
+
+      <!-- KDS Orders Grid -->
+      <div id="kds-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ================= VIEW 4: ADMIN DASHBOARD & REPORTS ================= -->
+    <section id="view-admin" class="view-panel hidden space-y-6">
+      
+      <!-- Top Metrics Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex justify-between items-center text-slate-500 text-xs font-medium mb-2">
+            <span>ยอดขายรวมวันนี้</span>
+            <i class="fa-solid fa-wallet text-orange-500 text-base"></i>
+          </div>
+          <div class="text-2xl font-bold text-slate-800" id="admin-total-sales">14,850 ฿</div>
+          <span class="text-xs text-emerald-600 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> +12% จากเมื่อวาน</span>
+        </div>
+        
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex justify-between items-center text-slate-500 text-xs font-medium mb-2">
+            <span>จำนวนคำสั่งซื้อ</span>
+            <i class="fa-solid fa-receipt text-blue-500 text-base"></i>
+          </div>
+          <div class="text-2xl font-bold text-slate-800" id="admin-order-count">48 ออเดอร์</div>
+          <span class="text-xs text-emerald-600 font-medium"><i class="fa-solid fa-check"></i> สำเร็จ 95%</span>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex justify-between items-center text-slate-500 text-xs font-medium mb-2">
+            <span>ระยะเวลาส่งเฉลี่ย</span>
+            <i class="fa-solid fa-clock text-amber-500 text-base"></i>
+          </div>
+          <div class="text-2xl font-bold text-slate-800">19.5 นาที</div>
+          <span class="text-xs text-emerald-600 font-medium"><i class="fa-solid fa-bolt"></i> เร็วขึ้น 3 นาที</span>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex justify-between items-center text-slate-500 text-xs font-medium mb-2">
+            <span>เมนูขายดีประจำวัน</span>
+            <i class="fa-solid fa-crown text-purple-500 text-base"></i>
+          </div>
+          <div class="text-lg font-bold text-slate-800 truncate">ข้าวมันไก่กุ๊กกุ๊ก</div>
+          <span class="text-xs text-slate-500">ขายได้ 32 จาน</span>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-slate-800 mb-4">รายงานยอดขายรายชั่วโมง (Hourly Sales)</h3>
+          <div class="h-64">
+            <canvas id="salesChart"></canvas>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-slate-800 mb-4">สัดส่วนยอดขายตามหมวดหมู่</h3>
+          <div class="h-64 flex items-center justify-center">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Food Menu Management Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-base font-bold text-slate-800">จัดการรายการอาหาร (Menu Management)</h3>
+          <button onclick="addNewMenuPrompt()" class="bg-orange-600 hover:bg-orange-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition">
+            <i class="fa-solid fa-plus mr-1"></i> เพิ่มเมนูใหม่
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 uppercase font-semibold border-b border-slate-200">
+              <tr>
+                <th class="p-3">เมนู</th>
+                <th class="p-3">หมวดหมู่</th>
+                <th class="p-3">ราคา</th>
+                <th class="p-3">สถานะสินค้า</th>
+                <th class="p-3 text-right">การจัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="admin-menu-table" class="divide-y divide-slate-100">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- CART & CHECKOUT DRAWER (SLIDE OVER) -->
+  <div id="cart-drawer" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden transition-opacity">
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col">
+      <!-- Drawer Header -->
+      <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+        <h3 class="font-bold text-lg text-slate-800"><i class="fa-solid fa-basket-shopping text-orange-600 mr-2"></i>ตะกร้าสินค้าของคุณ</h3>
+        <button onclick="closeCartDrawer()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <!-- Items List -->
+      <div id="cart-items-container" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Checkout Form & Pricing Summary -->
+      <div class="p-4 border-t border-slate-200 bg-slate-50 space-y-3">
+        <!-- Delivery Address Input -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">ที่อยู่จัดส่ง / พิกัด</label>
+          <input type="text" id="checkout-address" value="99/1 ซอยอารีย์ ถนนพหลโยธิน กทม." class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">
+        </div>
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">หมายเหตุถึงครัว (ไม่บังคับ)</label>
+          <input type="text" id="checkout-note" placeholder="เช่น เผ็ดน้อย, แยกน้ำ" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">
+        </div>
+
+        <div class="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-200">
+          <div class="flex justify-between"><span>ค่าอาหาร</span><span id="summary-subtotal">0 ฿</span></div>
+          <div class="flex justify-between"><span>ค่าจัดส่ง (Smart Distance)</span><span id="summary-delivery">25 ฿</span></div>
+          <div class="flex justify-between font-bold text-sm text-slate-800 pt-1 border-t border-slate-200">
+            <span>ราคารวมสุทธิ</span>
+            <span id="summary-total" class="text-orange-600 text-base">0 ฿</span>
+          </div>
+        </div>
+
+        <!-- Confirm Order Button -->
+        <button onclick="processCheckout()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white py-3 rounded-xl font-bold shadow-md shadow-orange-200 transition">
+          ยืนยันการสั่งซื้อ & ชำระเงิน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI CHAT & RECOMMENDER MODAL -->
+  <div id="ai-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col h-[500px] overflow-hidden">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-robot text-amber-300 text-xl"></i>
+          <div>
+            <h3 class="font-bold text-sm">AI Food Assistant</h3>
+            <p class="text-xs text-purple-200">ถามไถ่เมนูอาหาร หรือให้ช่วยจัดเซ็ตมื้ออร่อย</p>
+          </div>
+        </div>
+        <button onclick="closeAiChatModal()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <!-- Messages Body -->
+      <div id="ai-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 text-xs custom-scroll">
+        <div class="flex items-start gap-2">
+          <div class="w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs">AI</div>
+          <div class="bg-white p-3 rounded-2xl border border-slate-200 max-w-[80%] shadow-sm">
+            สวัสดีครับ! วันนี้หิวมื้อไหนเป็นพิเศษไหมครับ? หรือบอกงบประมาณ/อาหารที่อยากทาน ให้ AI ช่วยแนะนำได้เลยครับ!
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Prompt Chips -->
+      <div class="px-4 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto text-[11px] custom-scroll">
+        <button onclick="sendQuickAiPrompt('แนะนำเมนูเผ็ดๆ แซ่บๆ ให้หน่อย')" class="bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full whitespace-nowrap hover:bg-purple-100">🌶️ มื้อแซ่บๆ</button>
+        <button onclick="sendQuickAiPrompt('มีเมนูเครื่องดื่มของหวานแนะนำไหม')" class="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full whitespace-nowrap hover:bg-amber-100">🍰 ของหวาน</button>
+        <button onclick="sendQuickAiPrompt('ขอเมนูไม่เกิน 70 บาท')" class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full whitespace-nowrap hover:bg-emerald-100">💰 เมนูประหยัด</button>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
+        <input type="text" id="ai-input" placeholder="พิมพ์ข้อความคุยกับ AI..." onkeydown="if(event.key==='Enter') sendAiMessage()" class="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+        <button onclick="sendAiMessage()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC & STATE MANAGEMENT -->
+  <script>
+    // Initial Mock Data (Foods)
+    const foodData = [
+      { id: 1, name: 'ข้าวมันไก่ต้มสูตรเด็ด', category: 'อาหารจานเดียว', price: 60, image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&q=80', status: 'available' },
+      { id: 2, name: 'ผัดไทยกุ้งสดห่อไข่', category: 'อาหารจานเดียว', price: 85, image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=400&q=80', status: 'available' },
+      { id: 3, name: 'ส้มตำไทยไข่เค็ม', category: 'เมนูแซ่บ', price: 65, image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&q=80', status: 'available' },
+      { id: 4, name: 'ชาไทยเย็นเฉาก๊วย', category: 'เครื่องดื่ม', price: 45, image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=400&q=80', status: 'available' },
+      { id: 5, name: 'ข้าวผัดกระเพราหมูกรอบ', category: 'อาหารจานเดียว', price: 75, image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=400&q=80', status: 'available' },
+      { id: 6, name: 'บิงซูชาไทยพรีเมียม', category: 'ของหวาน', price: 120, image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&q=80', status: 'available' },
+    ];
+
+    // State Storage
+    let cart = [];
+    let orders = [
+      {
+        id: 'ORD-10024',
+        time: '12:30 น.',
+        items: [
+          { name: 'ข้าวมันไก่ต้มสูตรเด็ด', qty: 1, price: 60 },
+          { name: 'ชาไทยเย็นเฉาก๊วย', qty: 1, price: 45 }
+        ],
+        total: 130,
+        status: 1, // 1: Received, 2: Cooking, 3: Delivering, 4: Completed
+        eta: 18
+      }
+    ];
+    let currentCategory = 'ทั้งหมด';
+
+    // Initialization on Page Load
+    window.onload = function() {
+      renderCategories();
+      renderFoodGrid();
+      renderAdminTable();
+      initAdminCharts();
+      updateCartBadge();
+      renderKdsOrders();
+      renderTrackingView();
+    };
+
+    // Navigation Switcher
+    function switchTab(tabName) {
+      document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-orange-600', 'shadow-sm');
+        btn.classList.add('text-slate-600');
+      });
+
+      document.getElementById(`view-${tabName}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`nav-${tabName}`);
+      if(activeBtn) {
+        activeBtn.classList.add('bg-white', 'text-orange-600', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-600');
+      }
+
+      if(tabName === 'tracking') renderTrackingView();
+      if(tabName === 'kitchen') renderKdsOrders();
+    }
+
+    // Render Categories
+    function renderCategories() {
+      const categories = ['ทั้งหมด', 'อาหารจานเดียว', 'เมนูแซ่บ', 'เครื่องดื่ม', 'ของหวาน'];
+      const container = document.getElementById('category-chips');
+      container.innerHTML = categories.map(cat => `
+        <button onclick="filterCategory('${cat}')" class="px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${currentCategory === cat ? 'bg-orange-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}">
+          ${cat}
+        </button>
+      `).join('');
+    }
+
+    function filterCategory(cat) {
+      currentCategory = cat;
+      renderCategories();
+      renderFoodGrid();
+    }
+
+    // Render Food Cards
+    function renderFoodGrid() {
+      const grid = document.getElementById('food-grid');
+      const search = document.getElementById('search-input').value.toLowerCase();
+      
+      const filtered = foodData.filter(item => {
+        const matchCat = currentCategory === 'ทั้งหมด' || item.category === currentCategory;
+        const matchSearch = item.name.toLowerCase().includes(search);
+        return matchCat && matchSearch;
+      });
+
+      grid.innerHTML = filtered.map(item => `
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+          <div>
+            <img src="${item.image}" alt="${item.name}" class="w-full h-40 object-cover">
+            <div class="p-4">
+              <span class="text-[10px] font-semibold uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded">${item.category}</span>
+              <h3 class="font-bold text-slate-800 text-sm mt-1.5 mb-1">${item.name}</h3>
+              <p class="text-xs text-slate-500">รสชาติอร่อย วัตถุดิบสดใหม่ปรุงร้อน</p>
+            </div>
+          </div>
+          <div class="p-4 pt-0 flex justify-between items-center border-t border-slate-50 mt-2">
+            <span class="text-lg font-bold text-orange-600">${item.price} ฿</span>
+            <button onclick="addToCart(${item.id})" class="bg-orange-600 hover:bg-orange-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-sm">
+              <i class="fa-solid fa-plus mr-1"></i> เพิ่มลงตะกร้า
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function handleSearch() { renderFoodGrid(); }
+
+    // Cart Operations
+    function addToCart(foodId) {
+      const food = foodData.find(f => f.id === foodId);
+      const existing = cart.find(c => c.id === foodId);
+      if(existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({ ...food, qty: 1 });
+      }
+      updateCartBadge();
+      renderCartDrawer();
+      showToast(`เพิ่ม "${food.name}" ลงตะกร้าแล้ว!`);
+    }
+
+    function updateCartBadge() {
+      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+      document.getElementById('cart-count-badge').innerText = totalQty;
+    }
+
+    function openCartDrawer() {
+      renderCartDrawer();
+      document.getElementById('cart-drawer').classList.remove('hidden');
+    }
+    function closeCartDrawer() {
+      document.getElementById('cart-drawer').classList.add('hidden');
+    }
+
+    function renderCartDrawer() {
+      const container = document.getElementById('cart-items-container');
+      if(cart.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-400">
+            <i class="fa-solid fa-basket-shopping text-4xl mb-2"></i>
+            <p class="text-xs">ยังไม่มีรายการอาหารในตะกร้า</p>
+          </div>
+        `;
+        document.getElementById('summary-subtotal').innerText = '0 ฿';
+        document.getElementById('summary-total').innerText = '0 ฿';
+        return;
+      }
+
+      let subtotal = 0;
+      container.innerHTML = cart.map((item, index) => {
+        const itemTotal = item.price * item.qty;
+        subtotal += itemTotal;
+        return `
+          <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div>
+              <h4 class="font-bold text-xs text-slate-800">${item.name}</h4>
+              <span class="text-xs text-orange-600 font-semibold">${item.price} ฿</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="changeQty(${index}, -1)" class="w-6 h-6 rounded-lg bg-white border border-slate-300 text-xs flex items-center justify-center font-bold">-</button>
+              <span class="text-xs font-bold w-4 text-center">${item.qty}</span>
+              <button onclick="changeQty(${index}, 1)" class="w-6 h-6 rounded-lg bg-white border border-slate-300 text-xs flex items-center justify-center font-bold">+</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const delivery = 25;
+      document.getElementById('summary-subtotal').innerText = `${subtotal} ฿`;
+      document.getElementById('summary-total').innerText = `${subtotal + delivery} ฿`;
+    }
+
+    function changeQty(index, delta) {
+      cart[index].qty += delta;
+      if(cart[index].qty <= 0) cart.splice(index, 1);
+      updateCartBadge();
+      renderCartDrawer();
+    }
+
+    // Process Checkout
+    function processCheckout() {
+      if(cart.length === 0) {
+        alert('กรุณาเลือกเมนูอาหารก่อนสั่งซื้อครับ');
+        return;
+      }
+      
+      const newOrderId = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      
+      const newOrder = {
+        id: newOrderId,
+        time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.',
+        items: cart.map(c => ({ name: c.name, qty: c.qty, price: c.price })),
+        total: subtotal + 25,
+        status: 1, // Received
+        eta: 20
+      };
+
+      orders.unshift(newOrder); // Add to front
+      cart = [];
+      updateCartBadge();
+      closeCartDrawer();
+
+      // Show tracking tab with red badge indicator
+      document.getElementById('tracking-badge').classList.remove('hidden');
+      switchTab('tracking');
+      showToast(`ทำรายการสั่งซื้อออเดอร์ #${newOrderId} เรียบร้อย!`);
+    }
+
+    // Render Order Tracking View
+    function renderTrackingView() {
+      if(orders.length === 0) return;
+      const currentOrder = orders[0];
+
+      document.getElementById('track-order-id').innerText = currentOrder.id;
+      document.getElementById('track-order-time').innerText = currentOrder.time;
+      document.getElementById('track-total-price').innerText = `${currentOrder.total} ฿`;
+      document.getElementById('track-eta').innerText = `~${currentOrder.eta} นาที`;
+
+      // Status Bar Width
+      const progressMap = { 1: '25%', 2: '50%', 3: '75%', 4: '100%' };
+      document.getElementById('status-progress-bar').style.width = progressMap[currentOrder.status];
+
+      // Highlight Active Step
+      for(let i = 1; i <= 4; i++) {
+        const stepEl = document.getElementById(`step-${i}`);
+        if(i <= currentOrder.status) {
+          stepEl.className = 'text-orange-600 font-bold';
+        } else {
+          stepEl.className = 'text-slate-400 font-normal';
+        }
+      }
+
+      // Items list
+      document.getElementById('track-item-list').innerHTML = currentOrder.items.map(i => `
+        <div class="flex justify-between">
+          <span>${i.name} x ${i.qty}</span>
+          <span class="font-semibold">${i.price * i.qty} ฿</span>
+        </div>
+      `).join('');
+    }
+
+    // Kitchen Display System (KDS) Logic
+    function renderKdsOrders() {
+      const container = document.getElementById('kds-grid');
+      const statusNames = { 1: 'รับออเดอร์แล้ว', 2: 'กำลังปรุงอาหาร', 3: 'กำลังนำส่ง', 4: 'ส่งสำเร็จ' };
+      const statusColors = { 1: 'bg-blue-100 text-blue-700', 2: 'bg-amber-100 text-amber-700', 3: 'bg-purple-100 text-purple-700', 4: 'bg-emerald-100 text-emerald-700' };
+
+      container.innerHTML = orders.map(order => `
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+            <div>
+              <span class="text-xs font-bold text-slate-500">ออเดอร์ #${order.id}</span>
+              <p class="text-xs text-slate-400">เวลา: ${order.time}</p>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full font-bold ${statusColors[order.status]}">
+              ${statusNames[order.status]}
+            </span>
+          </div>
+
+          <div class="space-y-1.5 text-xs text-slate-700">
+            ${order.items.map(item => `
+              <div class="flex justify-between">
+                <span>• ${item.name}</span>
+                <span class="font-bold">x${item.qty}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex gap-2">
+            ${order.status < 4 ? `
+              <button onclick="updateOrderStatus('${order.id}', ${order.status + 1})" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-xl text-xs font-semibold transition">
+                ถัดไป: ${statusNames[order.status + 1]} <i class="fa-solid fa-arrow-right ml-1"></i>
+              </button>
+            ` : `
+              <span class="text-xs text-emerald-600 font-bold w-full text-center py-2 bg-emerald-50 rounded-xl">ทำรายการเรียบร้อย</span>
+            `}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateOrderStatus(orderId, newStatus) {
+      const order = orders.find(o => o.id === orderId);
+      if(order) {
+        order.status = newStatus;
+        if(newStatus === 3) order.eta = 10;
+        if(newStatus === 4) order.eta = 0;
+        renderKdsOrders();
+        showToast(`อัปเดตสถานะ #${orderId} แล้ว`);
+      }
+    }
+
+    // Admin Views & Charts
+    function renderAdminTable() {
+      const tbody = document.getElementById('admin-menu-table');
+      tbody.innerHTML = foodData.map(item => `
+        <tr>
+          <td class="p-3 font-semibold text-slate-800 flex items-center gap-2">
+            <img src="${item.image}" class="w-8 h-8 rounded-lg object-cover">
+            ${item.name}
+          </td>
+          <td class="p-3">${item.category}</td>
+          <td class="p-3 font-bold text-orange-600">${item.price} ฿</td>
+          <td class="p-3"><span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">พร้อมขาย</span></td>
+          <td class="p-3 text-right">
+            <button onclick="deleteMenu(${item.id})" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function deleteMenu(id) {
+      const index = foodData.findIndex(f => f.id === id);
+      if(index !== -1) {
+        foodData.splice(index, 1);
+        renderFoodGrid();
+        renderAdminTable();
+        showToast('ลบรายการเมนูเรียบร้อย');
+      }
+    }
+
+    function addNewMenuPrompt() {
+      const name = prompt('กรอกชื่อเมนูใหม่:');
+      const price = prompt('กรอกราคา (บาท):');
+      if(name && price) {
+        foodData.push({
+          id: Date.now(),
+          name: name,
+          category: 'อาหารจานเดียว',
+          price: parseInt(price),
+          image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80',
+          status: 'available'
+        });
+        renderFoodGrid();
+        renderAdminTable();
+        showToast('เพิ่มเมนูใหม่สำเร็จ!');
+      }
+    }
+
+    function initAdminCharts() {
+      // Sales Hourly Chart
+      const ctx1 = document.getElementById('salesChart').getContext('2d');
+      new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'],
+          datasets: [{
+            label: 'ยอดขาย (บาท)',
+            data: [1200, 2400, 4800, 3100, 1500, 900, 1800],
+            borderColor: '#ea580c',
+            backgroundColor: 'rgba(234, 88, 12, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // Category Donut Chart
+      const ctx2 = document.getElementById('categoryChart').getContext('2d');
+      new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+          labels: ['อาหารจานเดียว', 'เครื่องดื่ม', 'ของหวาน', 'เมนูแซ่บ'],
+          datasets: [{
+            data: [55, 20, 15, 10],
+            backgroundColor: ['#ea580c', '#f59e0b', '#8b5cf6', '#10b981']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // AI Chat Modal Logic
+    function openAiChatModal() { document.getElementById('ai-modal').classList.remove('hidden'); }
+    function closeAiChatModal() { document.getElementById('ai-modal').classList.add('hidden'); }
+
+    function sendQuickAiPrompt(text) {
+      document.getElementById('ai-input').value = text;
+      sendAiMessage();
+    }
+
+    async function sendAiMessage() {
+      const inputEl = document.getElementById('ai-input');
+      const text = inputEl.value.trim();
+      if(!text) return;
+
+      const container = document.getElementById('ai-chat-messages');
+      // User message
+      container.innerHTML += `
+        <div class="flex items-start gap-2 justify-end">
+          <div class="bg-orange-600 text-white p-3 rounded-2xl max-w-[80%] shadow-sm">
+            ${text}
+          </div>
+        </div>
+      `;
+      inputEl.value = '';
+      container.scrollTop = container.scrollHeight;
+
+      // AI Gemini Generation Call (Simulated Intelligent AI Response)
+      setTimeout(() => {
+        let aiReply = "ขอแนะนำ **ข้าวมันไก่ต้มสูตรเด็ด** (60฿) ทานคู่กับ **ชาไทยเย็นเฉาก๊วย** (45฿) อร่อยเข้ากันและคุ้มค่ามากๆ ครับ!";
+        if(text.includes('แซ่บ') || text.includes('เผ็ด')) {
+          aiReply = "จัดมื้อแซ่บแนะนำ **ส้มตำไทยไข่เค็ม** (65฿) ทานคู่กับข้าวผัดกระเพราหมูกรอบ รสจัดจ้านโดนใจแน่นอนครับ!";
+        } else if(text.includes('ของหวาน') || text.includes('เครื่องดื่ม')) {
+          aiReply = "แนะนำ **บิงซูชาไทยพรีเมียม** (120฿) หอมชาไทยชื่นใจคลายร้อนครับ!";
+        } else if(text.includes('ประหยัด') || text.includes('70')) {
+          aiReply = "มื้อประหยัดแนะนำ **ข้าวมันไก่ต้มสูตรเด็ด** ราคาเพียง 60 บาท อิ่มอร่อยกำลังดีครับ!";
+        }
+
+        container.innerHTML += `
+          <div class="flex items-start gap-2">
+            <div class="w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs">AI</div>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 max-w-[80%] shadow-sm">
+              ${aiReply}
+            </div>
+          </div>
+        `;
+        container.scrollTop = container.scrollHeight;
+      }, 600);
+    }
+
+    // Helper Toast Notification
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-20 right-5 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-lg z-50 transition-all duration-300';
+      toast.innerText = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
+  </script>
+</body>
+</html>
